@@ -116,6 +116,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Start notice board auto-scroll
     startScrolling();
+
+    initializeStatCards();
 });
 const captions = [
     { title: "Join Us Today", text: "Experience world-class education and vibrant campus life." },
@@ -184,21 +186,144 @@ function startScrolling() {
         }, 50);
     }
 }
-
-function checkVisibility() {
+// -------------------feature card animation-------------------
+function initializeAnimations() {
     const cards = document.querySelectorAll(".feature-card");
-    
-    cards.forEach((card) => {
-        const rect = card.getBoundingClientRect();
-        if (rect.top < window.innerHeight - 100 && rect.bottom > 100) {
-            card.classList.add("visible");
-            card.classList.remove("reset");
-        } else {
-            card.classList.remove("visible");
-            card.classList.add("reset");
-        }
+    let delay = 0;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry, index) => {
+            if (entry.isIntersecting) {
+                // Stagger the animations
+                setTimeout(() => {
+                    entry.target.classList.add('visible');
+                    // Randomly select animation type
+                    const animations = ['fade-up', 'fade-left', 'fade-right', 'zoom-in'];
+                    const randomAnim = animations[index % animations.length];
+                    entry.target.classList.add(randomAnim);
+                }, delay);
+                delay += 1600; // Stagger each card by 200ms
+            } else {
+                entry.target.classList.remove('visible', 'fade-up', 'fade-left', 'fade-right', 'zoom-in');
+                delay = 1600;
+            }
+        });
+    }, {
+        threshold: 0.3,
+        rootMargin: "20px"
+    });
+
+    cards.forEach(card => {
+        observer.observe(card);
+        // Add enhanced hover interaction
+        card.addEventListener('mouseenter', () => {
+            card.classList.add('hover');
+        });
+        card.addEventListener('mouseleave', () => {
+            card.classList.remove('hover');
+        });
     });
 }
 
-window.addEventListener("scroll", checkVisibility);
-window.addEventListener("load", checkVisibility);
+// Replace existing style with enhanced animations
+const style = document.createElement('style');
+style.textContent = `
+    .feature-card {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: all 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+        backface-visibility: hidden;
+        will-change: transform, opacity;
+    }
+
+    .feature-card.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .feature-card.fade-up {
+        transform: translateY(30px);
+    }
+
+    .feature-card.fade-left {
+        transform: translateX(-30px);
+    }
+
+    .feature-card.fade-right {
+        transform: translateX(30px);
+    }
+
+    .feature-card.zoom-in {
+        transform: scale(0.95);
+    }
+
+    .feature-card.visible.fade-up,
+    .feature-card.visible.fade-left,
+    .feature-card.visible.fade-right,
+    .feature-card.visible.zoom-in {
+        transform: translate(0) scale(1);
+    }
+
+    .feature-card.hover {
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .feature-card {
+            transition: opacity 0.9s ease;
+        }
+        .feature-card.hover {
+            transform: none;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+window.addEventListener("load", initializeAnimations);
+
+function initializeStatCards() {
+    const statCards = document.querySelectorAll('.stat-card');
+    
+    // Add number animation
+    statCards.forEach((card, index) => {
+        card.style.setProperty('--index', index);
+        
+        const numberElement = card.querySelector('.stat-number');
+        const targetNumber = parseInt(numberElement.textContent);
+        let currentNumber = 0;
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateNumber(currentNumber, targetNumber, numberElement);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+        
+        observer.observe(card);
+    });
+}
+
+function animateNumber(start, end, element) {
+    const duration = 2000;
+    const frameDuration = 1000 / 60;
+    const totalFrames = Math.round(duration / frameDuration);
+    const increment = (end - start) / totalFrames;
+    let currentFrame = 0;
+
+    const animate = () => {
+        currentFrame++;
+        const current = Math.round(increment * currentFrame + start);
+        element.textContent = current;
+
+        if (currentFrame < totalFrames) {
+            requestAnimationFrame(animate);
+        } else {
+            element.textContent = end;
+        }
+    };
+    
+    animate();
+}
